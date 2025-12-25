@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, Clock, Users, DollarSign, CheckSquare, 
   Plus, Trash2, Download, ChevronLeft, Heart, 
-  MapPin, X, ArrowRight, CalendarDays, 
-  Settings, Archive, LogOut, Key, Edit3, Save, Copy, Link as LinkIcon, PieChart, Users as UsersIcon, Shield
+  MapPin, X, ArrowRight, CalendarDays, Menu, 
+  FileText, FileSpreadsheet, File, PieChart, Settings, 
+  Archive, LogOut, Lock, User, Crown, Key, Loader2, Users as UsersIcon, Link as LinkIcon, Edit3, Save, XCircle, Shield, Copy
 } from 'lucide-react';
 
 // --- КОНФИГУРАЦИЯ ---
@@ -12,6 +13,10 @@ const SITE_URL = 'https://wedding-plan.vercel.app';
 const COLORS = {
   primary: '#936142',
   secondary: '#AC8A69',
+  accent: '#C58970',
+  neutral: '#CCBBA9',
+  dark: '#414942',
+  white: '#FFFFFF',
   bg: '#F9F7F5'
 };
 
@@ -195,21 +200,14 @@ const SettingsModal = ({ project, onClose, onSave, onDelete, onArchive }) => {
 
 const ProfileModal = ({ user, onClose, onSave }) => {
     const [name, setName] = useState(user?.name || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [secret, setSecret] = useState(user?.secret || '');
-
+    
     return (
         <div className="fixed inset-0 z-50 flex justify-center items-start p-4 bg-[#414942]/50 backdrop-blur-sm animate-in fade-in overflow-y-auto">
             <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 relative my-8">
                 <button onClick={onClose} className="absolute top-4 right-4 text-[#AC8A69]"><X size={20} /></button>
                 <h3 className="text-xl font-bold text-[#414942] mb-6">Профиль</h3>
                 <Input label="Имя" value={name} onChange={e => setName(e.target.value)} />
-                <Input label="Email" value={email} onChange={e => setEmail(e.target.value)} />
-                <div className="bg-[#F9F7F5] p-3 rounded-xl border border-[#AC8A69]/30 mb-6">
-                    <label className="block text-[10px] font-bold text-[#AC8A69] uppercase tracking-wider mb-2">Кодовое слово</label>
-                    <input className="bg-transparent w-full text-[#414942] outline-none" placeholder="Придумайте слово" value={secret} onChange={e => setSecret(e.target.value)} />
-                </div>
-                <Button className="w-full" onClick={() => onSave({ ...user, name, email, secret })}>Сохранить</Button>
+                <Button className="w-full" onClick={() => onSave({ ...user, name })}>Сохранить</Button>
             </div>
         </div>
     );
@@ -218,8 +216,7 @@ const ProfileModal = ({ user, onClose, onSave }) => {
 const OrganizersView = ({ team, onAdd, onDelete, onBack }) => {
     const [newName, setNewName] = useState('');
     const [newEmail, setNewEmail] = useState('');
-    const [newPass, setNewPass] = useState('');
-
+    
     return (
         <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat]">
             <nav className="p-6 flex items-center gap-4">
@@ -229,17 +226,16 @@ const OrganizersView = ({ team, onAdd, onDelete, onBack }) => {
                 <h2 className="text-3xl font-bold text-[#414942] mb-8">Команда</h2>
                 <Card className="p-6 mb-8 bg-white border-[#EBE5E0]">
                     <h3 className="font-bold text-[#936142] mb-4">Добавить сотрудника</h3>
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2">
                         <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Имя" value={newName} onChange={e => setNewName(e.target.value)} />
-                        <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-                        <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Пароль" value={newPass} onChange={e => setNewPass(e.target.value)} />
+                        <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Должность / Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
                     </div>
-                    <Button onClick={() => { onAdd({ id: Date.now(), name: newName, email: newEmail, password: newPass }); setNewName(''); setNewEmail(''); setNewPass(''); }} className="mt-4 w-full md:w-auto">Добавить</Button>
+                    <Button onClick={() => { onAdd({ id: Date.now(), name: newName, email: newEmail }); setNewName(''); setNewEmail(''); }} className="mt-4 w-full md:w-auto">Добавить</Button>
                 </Card>
                 <div className="grid gap-4">
                     {team.map(org => (
                         <div key={org.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-[#EBE5E0]">
-                            <div><p className="font-bold text-[#414942]">{org.name}</p><p className="text-xs text-[#AC8A69]">{org.email} | Пароль: {org.password}</p></div>
+                            <div><p className="font-bold text-[#414942]">{org.name}</p><p className="text-xs text-[#AC8A69]">{org.email}</p></div>
                             <button onClick={() => onDelete(org.id)} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={18}/></button>
                         </div>
                     ))}
@@ -255,86 +251,25 @@ const OrganizersView = ({ team, onAdd, onDelete, onBack }) => {
 export default function App() {
   const [projects, setProjects] = useState(() => JSON.parse(localStorage.getItem('wedding_projects') || '[]'));
   const [team, setTeam] = useState(() => JSON.parse(localStorage.getItem('wedding_team') || '[]'));
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('wedding_user') || '{"name":"Владелец","email":"owner@wed.control","role":"owner"}'));
+  // Пользователь всегда "Владелец" по умолчанию, так как авторизации нет
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('wedding_user') || '{"name":"Владелец","role":"owner"}'));
   
   const [currentProject, setCurrentProject] = useState(null);
-  const [view, setView] = useState('login'); 
+  const [view, setView] = useState('dashboard'); // Сразу открываем дашборд!
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboardTab, setDashboardTab] = useState('active'); 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-  
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPass, setLoginPass] = useState('');
-  const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [recoverySecret, setRecoverySecret] = useState('');
-  const [recoveryNewPass, setRecoveryNewPass] = useState('');
 
   useEffect(() => localStorage.setItem('wedding_projects', JSON.stringify(projects)), [projects]);
   useEffect(() => localStorage.setItem('wedding_team', JSON.stringify(team)), [team]);
   useEffect(() => localStorage.setItem('wedding_user', JSON.stringify(user)), [user]);
 
-  const handleLogin = () => {
-      const email = loginEmail.trim().toLowerCase();
-      const pass = loginPass.trim();
-
-      // 1. Всегда пускаем по дефолтному демо-логину (защита от "застревания" кэша)
-      if (email === 'owner@wed.control' && pass === 'admin') {
-          // Если в localStorage были старые данные, обновим их на дефолт
-          if (user.email !== 'owner@wed.control') {
-             setUser({ name: "Владелец", email: "owner@wed.control", role: "owner" });
-          }
-          setView('dashboard');
-          return;
-      }
-
-      // 2. Проверка, если пользователь сменил данные в профиле
-      if (email === (user.email || '').toLowerCase() && pass === user.password) {
-          setView('dashboard');
-          return;
-      }
-
-      // 3. Проверка сотрудника команды
-      const member = team.find(m => m.email.toLowerCase() === email && m.password === pass);
-      if (member) {
-          setView('dashboard');
-          return;
-      }
-
-      // 4. Вход как клиент (по паролю проекта)
-      const proj = projects.find(p => p.clientPassword === pass);
-      if (proj) {
-          setCurrentProject(proj);
-          setUser({ name: 'Клиент', role: 'client' });
-          setView('project');
-          setActiveTab('overview');
-          return;
-      }
-
-      alert('Неверный логин или пароль');
-  };
-
-  const handleClientLinkLogin = () => {
-     const pass = loginPass.trim();
-     const proj = projects.find(p => p.clientPassword === pass);
-     if (proj) {
-         setCurrentProject(proj);
-         setUser({ name: 'Клиент', role: 'client' });
-         setView('project');
-         setActiveTab('overview');
-     } else {
-         alert('Неверный пароль');
-     }
-  };
-
-  const handleRecovery = () => {
-      if (recoveryEmail === user.email && recoverySecret === (user.secret || 'secret')) {
-          setUser({ ...user, password: recoveryNewPass });
-          alert('Пароль изменен');
-          setView('login');
-      } else {
-          alert('Неверные данные');
+  // Функция "Выхода" теперь просто обновляет страницу, сбрасывая состояние вью (но данные остаются)
+  const handleLogout = () => {
+      if(window.confirm('Это демо-версия. Данные хранятся в вашем браузере. Вы действительно хотите перезагрузить страницу?')) {
+        window.location.reload();
       }
   };
 
@@ -374,53 +309,31 @@ export default function App() {
     setCurrentProject(prev => { const updated = { ...prev, [field]: value }; setProjects(list => list.map(p => p.id === updated.id ? updated : p)); return updated; });
   };
 
-  if (view === 'login') return (
-      <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat] flex flex-col items-center justify-center p-6">
-          <div className="mb-8 text-center"><h1 className="text-4xl font-bold text-[#414942] mb-2">Wed.Control</h1><p className="text-[#AC8A69]">Демо-версия</p></div>
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-4">
-              <Input placeholder="Email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
-              <Input placeholder="Пароль" type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} />
-              <Button className="w-full" onClick={handleLogin}>Войти</Button>
-              <button onClick={() => setView('client_login')} className="w-full text-center text-xs text-[#AC8A69] hover:underline mt-4">Вход для клиента</button>
-              <button onClick={() => setView('recovery')} className="w-full text-center text-xs text-[#AC8A69] hover:underline mt-2">Забыли пароль?</button>
-              
-              <div className="mt-6 p-4 bg-[#F9F7F5] rounded-xl border border-[#AC8A69]/20 text-center">
-                  <p className="text-xs text-[#AC8A69] font-bold uppercase mb-2">Данные для входа (Демо):</p>
-                  <p className="text-sm text-[#414942]">Email: <span className="font-mono font-bold">owner@wed.control</span></p>
-                  <p className="text-sm text-[#414942]">Пароль: <span className="font-mono font-bold">admin</span></p>
-              </div>
-          </div>
-      </div>
-  );
+  const saveSettings = (updatedData) => {
+    setCurrentProject(updatedData);
+    setProjects(list => list.map(p => p.id === updatedData.id ? updatedData : p));
+    setIsSettingsOpen(false);
+  };
 
-  if (view === 'client_login') return (
-      <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat] flex flex-col items-center justify-center p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-              <Heart size={48} className="text-[#936142] mx-auto mb-6" />
-              <h2 className="text-2xl font-serif text-[#414942] mb-8">Вход по приглашению</h2>
-              <Input placeholder="Пароль проекта" type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} />
-              <Button className="w-full" onClick={handleClientLinkLogin}>Войти</Button>
-              <button onClick={() => setView('login')} className="w-full text-center text-xs text-[#AC8A69] hover:underline mt-4">Я организатор</button>
-          </div>
-      </div>
-  );
+  const deleteProject = (id) => {
+    if(window.confirm('Удалить проект?')) {
+        setProjects(list => list.filter(p => p.id !== id));
+        setIsSettingsOpen(false);
+        setView('dashboard');
+    }
+  };
 
-  if (view === 'recovery') return (
-      <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat] flex flex-col items-center justify-center p-6">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-4">
-              <h2 className="text-2xl font-bold text-[#414942] mb-4 text-center">Восстановление</h2>
-              <Input placeholder="Email" value={recoveryEmail} onChange={e => setRecoveryEmail(e.target.value)} />
-              <Input placeholder="Секретное слово" value={recoverySecret} onChange={e => setRecoverySecret(e.target.value)} />
-              <Input placeholder="Новый пароль" type="password" value={recoveryNewPass} onChange={e => setRecoveryNewPass(e.target.value)} />
-              <Button className="w-full" onClick={handleRecovery}>Сменить</Button>
-              <button onClick={() => setView('login')} className="w-full text-center text-sm text-[#AC8A69] mt-4">Назад</button>
-          </div>
-      </div>
-  );
+  const toggleArchive = (id) => {
+    const p = projects.find(x => x.id === id);
+    p.isArchived = !p.isArchived;
+    setProjects([...projects]);
+    setIsSettingsOpen(false);
+    setView('dashboard');
+  };
 
   if (view === 'team') return <OrganizersView team={team} onBack={() => setView('dashboard')} onAdd={(m) => setTeam([...team, m])} onDelete={(id) => setTeam(team.filter(t => t.id !== id))} />;
 
-  if (view === 'dashboard') {
+  if (view === 'dashboard' || view === 'login') { // view='login' игнорируем, сразу показываем дашборд
     const filteredProjects = projects.filter(p => dashboardTab === 'active' ? !p.isArchived : p.isArchived);
     return (
       <div className="min-h-screen bg-[#F9F7F5] p-6 md:p-12 pb-32 font-[Montserrat]">
@@ -431,7 +344,6 @@ export default function App() {
             <div className="flex gap-2 w-full md:w-auto">
                 <Button onClick={() => { setFormData(INITIAL_FORM_STATE); setView('create'); }}><Plus size={20}/> Новый проект</Button>
                 <Button variant="secondary" onClick={() => setView('team')}><UsersIcon size={20}/> Команда</Button>
-                <Button variant="ghost" onClick={handleLogout}><LogOut size={20}/></Button>
             </div>
           </header>
           <div className="flex gap-4 mb-8 border-b border-[#EBE5E0]">
