@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- КОНФИГУРАЦИЯ ---
-const SITE_URL = 'https://wedding-plan.vercel.app'; // Потом заменим на новую ссылку
+const SITE_URL = 'https://wedding-plan.vercel.app'; 
 
 const COLORS = {
   primary: '#936142',
@@ -15,7 +15,7 @@ const COLORS = {
   bg: '#F9F7F5'
 };
 
-// --- ДАННЫЕ ---
+// --- ДАННЫЕ ПО УМОЛЧАНИЮ ---
 const INITIAL_EXPENSES = [
   { category: 'Декор', name: 'Декор и флористика', plan: 0, fact: 0, paid: 0, note: '' },
   { category: 'Площадка', name: 'Аренда мебели', plan: 0, fact: 0, paid: 0, note: '' },
@@ -276,24 +276,48 @@ export default function App() {
   useEffect(() => localStorage.setItem('wedding_user', JSON.stringify(user)), [user]);
 
   const handleLogin = () => {
-      if ((loginEmail === user.email && loginPass === (user.password || 'admin')) || 
-          team.find(m => m.email === loginEmail && m.password === loginPass)) {
-          setView('dashboard');
-      } else {
-          const proj = projects.find(p => p.clientPassword === loginPass);
-          if (proj) {
-              setCurrentProject(proj);
-              setUser({ name: 'Клиент', role: 'client' });
-              setView('project');
-              setActiveTab('overview');
-          } else {
-              alert('Неверный логин или пароль (Демо: admin/admin)');
+      const email = loginEmail.trim().toLowerCase();
+      const pass = loginPass.trim();
+
+      // 1. Всегда пускаем по дефолтному демо-логину (защита от "застревания" кэша)
+      if (email === 'owner@wed.control' && pass === 'admin') {
+          // Если в localStorage были старые данные, обновим их на дефолт
+          if (user.email !== 'owner@wed.control') {
+             setUser({ name: "Владелец", email: "owner@wed.control", role: "owner" });
           }
+          setView('dashboard');
+          return;
       }
+
+      // 2. Проверка, если пользователь сменил данные в профиле
+      if (email === (user.email || '').toLowerCase() && pass === user.password) {
+          setView('dashboard');
+          return;
+      }
+
+      // 3. Проверка сотрудника команды
+      const member = team.find(m => m.email.toLowerCase() === email && m.password === pass);
+      if (member) {
+          setView('dashboard');
+          return;
+      }
+
+      // 4. Вход как клиент (по паролю проекта)
+      const proj = projects.find(p => p.clientPassword === pass);
+      if (proj) {
+          setCurrentProject(proj);
+          setUser({ name: 'Клиент', role: 'client' });
+          setView('project');
+          setActiveTab('overview');
+          return;
+      }
+
+      alert('Неверный логин или пароль');
   };
 
   const handleClientLinkLogin = () => {
-     const proj = projects.find(p => p.clientPassword === loginPass);
+     const pass = loginPass.trim();
+     const proj = projects.find(p => p.clientPassword === pass);
      if (proj) {
          setCurrentProject(proj);
          setUser({ name: 'Клиент', role: 'client' });
