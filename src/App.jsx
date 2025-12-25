@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, Clock, Users, DollarSign, CheckSquare, 
   Plus, Trash2, Download, ChevronLeft, Heart, 
-  MapPin, X, ArrowRight, CalendarDays, Menu, 
-  FileText, FileSpreadsheet, File, PieChart, Settings, 
-  Archive, LogOut, Lock, User, Crown, Key, Loader2, Users as UsersIcon, Link as LinkIcon, Edit3, Save, XCircle, Shield, Copy
+  MapPin, X, ArrowRight, CalendarDays, 
+  Settings, Archive, LogOut, Key, Edit3, Save, Copy, Link as LinkIcon, PieChart, Users as UsersIcon, Shield
 } from 'lucide-react';
 
 // --- КОНФИГУРАЦИЯ ---
@@ -13,30 +12,25 @@ const SITE_URL = 'https://wedding-plan.vercel.app';
 const COLORS = {
   primary: '#936142',
   secondary: '#AC8A69',
-  accent: '#C58970',
-  neutral: '#CCBBA9',
-  dark: '#414942',
-  white: '#FFFFFF',
   bg: '#F9F7F5'
 };
 
 // --- ДАННЫЕ ПО УМОЛЧАНИЮ ---
 const INITIAL_EXPENSES = [
-  { category: 'Декор', name: 'Декор и флористика', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Площадка', name: 'Аренда мебели', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Фото и Видео', name: 'Фотограф', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Фото и Видео', name: 'Видеограф', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Программа', name: 'Ведущий + диджей', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Образ', name: 'Стилист', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Банкет', name: 'Торт', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Банкет', name: 'Свадебный ужин', plan: 0, fact: 0, paid: 0, note: '' },
-  { category: 'Команда', name: 'Организация', plan: 0, fact: 0, paid: 0, note: '' },
+  { category: 'Декор', name: 'Декор и флористика', plan: 150000, fact: 150000, paid: 50000, note: '' },
+  { category: 'Площадка', name: 'Аренда лофта', plan: 80000, fact: 80000, paid: 80000, note: '' },
+  { category: 'Фото и Видео', name: 'Фотограф', plan: 60000, fact: 60000, paid: 10000, note: '' },
+  { category: 'Образ', name: 'Стилист', plan: 15000, fact: 15000, paid: 0, note: '' },
+  { category: 'Банкет', name: 'Торт', plan: 10000, fact: 0, paid: 0, note: '' },
+  { category: 'Банкет', name: 'Кейтеринг', plan: 200000, fact: 0, paid: 0, note: '' },
+  { category: 'Команда', name: 'Организация', plan: 50000, fact: 50000, paid: 25000, note: '' },
 ];
 
 const INITIAL_TIMING = [
   { time: '09:00', event: 'Пробуждение' },
-  { time: '10:00', event: 'Сборы' },
-  { time: '13:00', event: 'Фотосессия' },
+  { time: '10:00', event: 'Приезд стилиста' },
+  { time: '12:00', event: 'Фотосессия в студии' },
+  { time: '15:30', event: 'Сбор гостей' },
   { time: '16:00', event: 'Церемония' },
   { time: '17:00', event: 'Банкет' },
   { time: '23:00', event: 'Финал' },
@@ -148,127 +142,168 @@ const DownloadMenu = ({ onSelect }) => {
   );
 };
 
-// --- VIEWS ---
+// --- SUB-VIEWS (ВЫНЕСЕНЫ НАРУЖУ ДЛЯ ИСПРАВЛЕНИЯ ПУСТОГО ЭКРАНА) ---
 
-const SettingsModal = ({ project, onClose, onSave, onDelete, onArchive }) => {
-  const [data, setData] = useState({ ...project });
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-center items-start p-4 bg-[#414942]/50 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative flex flex-col my-8 min-h-min mb-20">
-        <div className="p-6 border-b border-[#EBE5E0] flex justify-between items-center shrink-0">
-          <h3 className="text-xl font-bold text-[#414942]">Настройки</h3>
-          <button onClick={onClose} className="p-2 hover:bg-[#F9F7F5] rounded-full text-[#AC8A69]"><X size={20} /></button>
-        </div>
-        <div className="p-6">
-           <div className="bg-[#936142] p-5 rounded-2xl mb-6 text-white shadow-lg">
-              <div className="flex justify-between items-start mb-2">
-                 <p className="text-xs font-bold uppercase tracking-widest opacity-80">Доступ для клиента</p>
-                 <LinkIcon size={16} className="opacity-80"/>
-              </div>
-              <div className="flex gap-2 items-center bg-white/10 p-2 rounded-xl border border-white/20 mb-3">
-                 <input className="bg-transparent text-sm w-full outline-none text-white placeholder-white/50" value={`${SITE_URL}?id=${project.id}`} readOnly />
-                 <button onClick={() => alert('Скопировано')}><Copy size={16}/></button>
-              </div>
-              <div>
-                 <p className="text-[10px] uppercase opacity-60 mb-1">Пароль</p>
-                 <input className="bg-transparent text-xl font-bold w-full outline-none" value={data.clientPassword || ''} onChange={e => setData({...data, clientPassword: e.target.value})} />
-              </div>
-           </div>
-           <div className="grid grid-cols-2 gap-4">
-              <Input label="Жених" value={data.groomName} onChange={e => setData({...data, groomName: e.target.value})} />
-              <Input label="Невеста" value={data.brideName} onChange={e => setData({...data, brideName: e.target.value})} />
-           </div>
-           <Input label="Организатор" value={data.organizerName} onChange={e => setData({...data, organizerName: e.target.value})} />
-           <div className="grid grid-cols-2 gap-4">
-              <Input label="Дата" type="date" value={data.date} onChange={e => setData({...data, date: e.target.value})} />
-              <Input label="Гостей" type="number" value={data.guestsCount} onChange={e => setData({...data, guestsCount: e.target.value})} />
-           </div>
-           <Input label="Локация" value={data.venueName} onChange={e => setData({...data, venueName: e.target.value})} />
-        </div>
-        <div className="p-6 border-t border-[#EBE5E0] bg-[#F9F7F5] shrink-0 rounded-b-3xl space-y-3">
-           <Button className="w-full" onClick={() => onSave(data)}><Save size={18} /> Сохранить</Button>
-           <div className="flex gap-3 pt-2">
-             <Button variant="outline" className="flex-1" onClick={() => onArchive(project.id)}><Archive size={18} /> {project.isArchived ? 'Вернуть' : 'В архив'}</Button>
-             <Button variant="danger" className="flex-1" onClick={() => onDelete(project.id)}><Trash2 size={18} /> Удалить</Button>
-           </div>
+const TasksView = ({ tasks, updateProject }) => (
+    <div className="space-y-6 animate-fadeIn pb-24">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 print:hidden">
+        <h2 className="text-2xl font-serif text-[#414942]">Список задач</h2>
+        <div className="flex gap-2 w-full md:w-auto">
+           <Button variant="primary" onClick={() => updateProject('tasks', [...tasks, { id: Date.now(), text: 'Новая задача', deadline: new Date().toISOString(), done: false }])} className="flex-1 md:flex-none"><Plus size={18}/> Добавить</Button>
+           <DownloadMenu onSelect={(t) => downloadCSV([['Задача','Статус'], ...tasks.map(x=>[x.text, x.done?'+':'-'])], 'tasks.csv')} />
         </div>
       </div>
-    </div>
-  );
-};
-
-const ProfileModal = ({ user, onClose, onSave }) => {
-    const [name, setName] = useState(user?.name || '');
-    
-    return (
-        <div className="fixed inset-0 z-50 flex justify-center items-start p-4 bg-[#414942]/50 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 relative my-8">
-                <button onClick={onClose} className="absolute top-4 right-4 text-[#AC8A69]"><X size={20} /></button>
-                <h3 className="text-xl font-bold text-[#414942] mb-6">Профиль</h3>
-                <Input label="Имя" value={name} onChange={e => setName(e.target.value)} />
-                <Button className="w-full" onClick={() => onSave({ ...user, name })}>Сохранить</Button>
-            </div>
-        </div>
-    );
-};
-
-const OrganizersView = ({ team, onAdd, onDelete, onBack }) => {
-    const [newName, setNewName] = useState('');
-    const [newEmail, setNewEmail] = useState('');
-    
-    return (
-        <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat]">
-            <nav className="p-6 flex items-center gap-4">
-                <button onClick={onBack} className="flex items-center gap-2 text-[#AC8A69] hover:text-[#936142]"><ChevronLeft size={20}/> <span className="font-bold text-lg">Назад</span></button>
-            </nav>
-            <div className="p-6 md:p-12 max-w-4xl mx-auto animate-fadeIn pb-32">
-                <h2 className="text-3xl font-bold text-[#414942] mb-8">Команда</h2>
-                <Card className="p-6 mb-8 bg-white border-[#EBE5E0]">
-                    <h3 className="font-bold text-[#936142] mb-4">Добавить сотрудника</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Имя" value={newName} onChange={e => setNewName(e.target.value)} />
-                        <input className="bg-[#F9F7F5] border-none rounded-xl p-3 outline-none" placeholder="Должность / Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-                    </div>
-                    <Button onClick={() => { onAdd({ id: Date.now(), name: newName, email: newEmail }); setNewName(''); setNewEmail(''); }} className="mt-4 w-full md:w-auto">Добавить</Button>
-                </Card>
-                <div className="grid gap-4">
-                    {team.map(org => (
-                        <div key={org.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-[#EBE5E0]">
-                            <div><p className="font-bold text-[#414942]">{org.name}</p><p className="text-xs text-[#AC8A69]">{org.email}</p></div>
-                            <button onClick={() => onDelete(org.id)} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={18}/></button>
-                        </div>
-                    ))}
-                    {team.length === 0 && <p className="text-center text-[#CCBBA9]">Нет сотрудников.</p>}
+      <div className="grid gap-4">
+        {tasks.sort((a,b) => (a.done === b.done ? 0 : a.done ? 1 : -1)).map((task, i) => (
+            <div key={task.id} className="group flex flex-col md:flex-row md:items-start p-4 bg-white rounded-xl border border-[#EBE5E0]">
+              <div className="flex items-start flex-1 gap-4 pt-1">
+                <Checkbox checked={task.done} onChange={(c) => { const n = [...tasks]; n.find(x=>x.id===task.id).done = c; updateProject('tasks', n); }} />
+                <div className="flex-1 min-w-0">
+                  <AutoHeightTextarea className={`w-full font-medium text-base md:text-lg bg-transparent outline-none ${task.done ? 'line-through text-[#CCBBA9]' : 'text-[#414942]'}`} value={task.text} onChange={(e) => { const n = [...tasks]; n.find(x=>x.id===task.id).text = e.target.value; updateProject('tasks', n); }} placeholder="Текст задачи" />
                 </div>
+              </div>
+              <div className="flex items-center justify-between md:justify-end gap-4 pl-10 md:pl-0 w-full md:w-auto pt-1">
+                <div className="flex items-center gap-2 text-[#AC8A69] bg-[#F9F7F5] px-3 py-1.5 rounded-lg w-full md:w-[160px]">
+                    <CalendarDays size={14}/><input type="date" className="bg-transparent outline-none text-sm w-full cursor-pointer" value={toInputDate(task.deadline)} onChange={(e) => { const n = [...tasks]; n.find(x=>x.id===task.id).deadline = e.target.value; updateProject('tasks', n); }} />
+                </div>
+                <button onClick={() => updateProject('tasks', tasks.filter(x=>x.id!==task.id))} className="text-[#CCBBA9] hover:text-red-400 p-2"><Trash2 size={18} /></button>
+              </div>
             </div>
+        ))}
+      </div>
+    </div>
+);
+
+const BudgetView = ({ expenses, updateProject }) => {
+      const totals = expenses.reduce((acc, item) => ({ plan: acc.plan + Number(item.plan), fact: acc.fact + Number(item.fact), paid: acc.paid + Number(item.paid) }), { plan: 0, fact: 0, paid: 0 });
+      return (
+        <div className="animate-fadeIn pb-24">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {['План', 'Факт', 'Внесено', 'Остаток'].map((label, i) => (
+                <Card key={label} className={`p-4 md:p-6 text-center ${i===3 ? 'bg-[#414942] text-white' : ''}`}>
+                    <p className={`${i===3 ? 'text-white/60' : 'text-[#AC8A69]'} text-[10px] md:text-xs uppercase tracking-widest mb-2`}>{label}</p>
+                    <p className={`text-lg md:text-2xl font-medium ${i===3 ? 'text-white' : i===2 ? 'text-[#936142]' : 'text-[#414942]'}`}>
+                        {formatCurrency(i===0?totals.plan:i===1?totals.fact:i===2?totals.paid:totals.fact-totals.paid)}
+                    </p>
+                </Card>
+            ))}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-[#EBE5E0] overflow-hidden">
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[1000px]">
+                      <thead><tr className="bg-[#F9F7F5] text-[#936142] text-xs md:text-sm uppercase tracking-wider"><th className="p-4 w-[200px]">Статья</th><th className="p-4 w-[120px]">План</th><th className="p-4 w-[120px]">Факт</th><th className="p-4 w-[120px]">Внесено</th><th className="p-4 w-[120px]">Остаток</th><th className="p-4 w-[200px]">Комментарии</th><th className="p-4 w-10"></th></tr></thead>
+                      <tbody className="divide-y divide-[#EBE5E0]">
+                      {expenses.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-[#F9F7F5]/50 group">
+                          <td className="p-4 align-top"><AutoHeightTextarea className="w-full bg-transparent outline-none font-medium text-[#414942] text-sm md:text-base" value={item.name} onChange={(e) => { const n=[...expenses]; n[idx].name=e.target.value; updateProject('expenses', n); }} /></td>
+                          <td className="p-4 align-top"><MoneyInput value={item.plan} onChange={(v) => { const n=[...expenses]; n[idx].plan=v; updateProject('expenses', n); }} className="w-full text-[#414942]" /></td>
+                          <td className="p-4 align-top"><MoneyInput value={item.fact} onChange={(v) => { const n=[...expenses]; n[idx].fact=v; updateProject('expenses', n); }} className="w-full text-[#414942]" /></td>
+                          <td className="p-4 align-top"><MoneyInput value={item.paid} onChange={(v) => { const n=[...expenses]; n[idx].paid=v; updateProject('expenses', n); }} className="w-full text-[#414942]" /></td>
+                          <td className="p-4 align-top text-[#AC8A69]">{formatCurrency(item.fact - item.paid)}</td>
+                          <td className="p-4 align-top"><AutoHeightTextarea className="w-full bg-transparent outline-none text-xs text-[#AC8A69]" placeholder="..." value={item.note || ''} onChange={(e) => { const n=[...expenses]; n[idx].note=e.target.value; updateProject('expenses', n); }} /></td>
+                          <td className="p-4 align-top"><button onClick={() => { const n=[...expenses]; n.splice(idx,1); updateProject('expenses', n); }} className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button></td>
+                          </tr>
+                      ))}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+          <div className="flex items-center gap-2 mt-6"><Button onClick={() => updateProject('expenses', [...expenses, { name: '', plan: 0, fact: 0, paid: 0 }])} variant="primary"><Plus size={18}/> Добавить статью</Button></div>
         </div>
-    );
+      );
 };
 
-// --- APP ---
+const GuestsView = ({ guests, updateProject }) => (
+      <div className="animate-fadeIn pb-24">
+          <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-serif text-[#414942]">Список гостей ({guests.length})</h2><Button onClick={() => updateProject('guests', [...guests, { id: Date.now(), name: '', table: '' }])} variant="primary"><Plus size={18}/> Добавить</Button></div>
+          <div className="grid gap-4">
+              {guests.map((guest, idx) => (
+                  <Card key={guest.id} className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                          <div className="flex items-center justify-between w-full md:w-auto md:col-span-1"><span className="w-8 h-8 rounded-full bg-[#CCBBA9]/30 text-[#936142] flex items-center justify-center font-bold text-sm">{idx + 1}</span><button onClick={() => updateProject('guests', guests.filter(g=>g.id!==guest.id))} className="md:hidden text-red-400"><Trash2 size={18}/></button></div>
+                          <div className="w-full md:col-span-3"><label className="text-[10px] text-[#CCBBA9] font-bold">ФИО</label><input className="w-full text-lg font-medium text-[#414942] bg-transparent border-b border-transparent focus:border-[#AC8A69] outline-none" placeholder="Имя гостя" value={guest.name} onChange={(e) => { const n=[...guests]; n[idx].name=e.target.value; updateProject('guests', n); }} /></div>
+                          <div className="w-1/2 md:w-full md:col-span-2"><label className="text-[10px] text-[#CCBBA9] font-bold">Стол №</label><input className="w-full bg-transparent border-b border-[#EBE5E0] focus:border-[#AC8A69] outline-none" value={guest.table} onChange={(e) => { const n=[...guests]; n[idx].table=e.target.value; updateProject('guests', n); }} /></div>
+                          <div className="w-full md:col-span-3"><label className="text-[10px] text-[#CCBBA9] font-bold">Пожелания</label><input className="w-full text-sm bg-transparent border-b border-[#EBE5E0] outline-none" placeholder="Еда..." value={guest.food} onChange={(e) => { const n=[...guests]; n[idx].food=e.target.value; updateProject('guests', n); }} /></div>
+                          <div className="hidden md:flex md:col-span-1 justify-end pt-4"><button onClick={() => updateProject('guests', guests.filter(g=>g.id!==guest.id))} className="text-[#CCBBA9] hover:text-red-400"><Trash2 size={18}/></button></div>
+                      </div>
+                  </Card>
+              ))}
+          </div>
+      </div>
+);
+
+const TimingView = ({ timing, updateProject }) => (
+    <div className="animate-fadeIn max-w-2xl mx-auto pb-24">
+        <div className="relative border-l border-[#EBE5E0] ml-4 md:ml-6 space-y-6">
+            {timing.sort((a,b)=>a.time.localeCompare(b.time)).map((item, idx) => (
+                <div key={item.id} className="relative pl-6 group">
+                    <div className="absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#AC8A69]"></div>
+                    <div className="flex items-baseline gap-4">
+                          <input className="w-16 text-lg font-bold text-[#936142] bg-transparent outline-none text-right" value={item.time} onChange={(e) => { const n=[...timing]; n[idx].time=e.target.value; updateProject('timing', n); }} />
+                          <input className="flex-1 text-base text-[#414942] bg-transparent outline-none border-b border-transparent focus:border-[#AC8A69]" value={item.event} onChange={(e) => { const n=[...timing]; n[idx].event=e.target.value; updateProject('timing', n); }} />
+                          <button onClick={() => updateProject('timing', timing.filter(t=>t.id!==item.id))} className="opacity-0 group-hover:opacity-100 text-[#CCBBA9] hover:text-red-400"><X size={14}/></button>
+                    </div>
+                </div>
+            ))}
+            <div className="pl-6 pt-2"><button onClick={() => updateProject('timing', [...timing, { id: Date.now(), time: '00:00', event: '' }])} className="flex items-center gap-2 text-[#AC8A69] text-xs font-medium"><Plus size={10}/> Добавить этап</button></div>
+        </div>
+    </div>
+);
+
+const NotesView = ({ notes, updateProject }) => (
+  <div className="h-full flex flex-col animate-fadeIn pb-24 md:pb-0">
+      <textarea className="flex-1 w-full bg-white p-8 rounded-2xl shadow-sm border border-[#EBE5E0] text-[#414942] leading-relaxed resize-none focus:ring-2 focus:ring-[#936142]/10 outline-none min-h-[50vh] print:shadow-none print:border-none print:p-0" placeholder="Место для важных мыслей, черновиков клятв и идей..." value={notes} onChange={(e) => updateProject('notes', e.target.value)} />
+  </div>
+);
+
+// --- APP COMPONENT ---
 
 export default function App() {
   const [projects, setProjects] = useState(() => JSON.parse(localStorage.getItem('wedding_projects') || '[]'));
   const [team, setTeam] = useState(() => JSON.parse(localStorage.getItem('wedding_team') || '[]'));
-  // Пользователь всегда "Владелец" по умолчанию, так как авторизации нет
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('wedding_user') || '{"name":"Владелец","role":"owner"}'));
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('wedding_user') || '{"name":"Владелец","email":"owner@wed.control","role":"owner"}'));
   
   const [currentProject, setCurrentProject] = useState(null);
-  const [view, setView] = useState('dashboard'); // Сразу открываем дашборд!
+  const [view, setView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboardTab, setDashboardTab] = useState('active'); 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
+  // --- МАГИЯ ДЛЯ ДЕМО-ССЫЛКИ ---
+  // Если человек заходит по ссылке ?id=123, а проекта нет в памяти — создаем "Фейковый" проект,
+  // чтобы человек увидел красивый интерфейс
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+        let proj = projects.find(p => p.id.toString() === id);
+        if (!proj) {
+            // Создаем демо-проект на лету для гостя
+            proj = {
+                id: Number(id),
+                groomName: 'Иван', brideName: 'Анна', date: new Date().toISOString(),
+                organizerName: 'Демо Организатор', clientPassword: '123',
+                tasks: TASK_TEMPLATES.map(t => ({ id: Math.random(), text: t.text, deadline: new Date().toISOString(), done: false })),
+                expenses: INITIAL_EXPENSES, timing: INITIAL_TIMING.map(t => ({...t, id: Math.random()})),
+                guests: [], notes: ''
+            };
+            // Сохраняем во временную память гостя
+            setProjects(prev => [...prev, proj]);
+        }
+        setCurrentProject(proj);
+        setUser({ name: 'Гость', role: 'client' });
+        setView('project');
+    }
+  }, []);
+
   useEffect(() => localStorage.setItem('wedding_projects', JSON.stringify(projects)), [projects]);
   useEffect(() => localStorage.setItem('wedding_team', JSON.stringify(team)), [team]);
   useEffect(() => localStorage.setItem('wedding_user', JSON.stringify(user)), [user]);
 
-  // Функция "Выхода" теперь просто обновляет страницу, сбрасывая состояние вью (но данные остаются)
   const handleLogout = () => {
-      if(window.confirm('Это демо-версия. Данные хранятся в вашем браузере. Вы действительно хотите перезагрузить страницу?')) {
+      if(window.confirm('Перезагрузить страницу демо-версии?')) {
         window.location.reload();
       }
   };
@@ -331,25 +366,36 @@ export default function App() {
     setView('dashboard');
   };
 
-  if (view === 'team') return <OrganizersView team={team} onBack={() => setView('dashboard')} onAdd={(m) => setTeam([...team, m])} onDelete={(id) => setTeam(team.filter(t => t.id !== id))} />;
+  // --- VIEWS ---
 
-  if (view === 'dashboard' || view === 'login') { // view='login' игнорируем, сразу показываем дашборд
+  if (view === 'team') {
+      return <OrganizersView team={team} onBack={() => setView('dashboard')} onAdd={(m) => setTeam([...team, m])} onDelete={(id) => setTeam(team.filter(t => t.id !== id))} />;
+  }
+
+  // ОБЩИЙ ДАШБОРД (ИЛИ ЛОГИН - У НАС СРАЗУ ВХОД)
+  if (view === 'dashboard' || view === 'login') {
     const filteredProjects = projects.filter(p => dashboardTab === 'active' ? !p.isArchived : p.isArchived);
     return (
       <div className="min-h-screen bg-[#F9F7F5] p-6 md:p-12 pb-32 font-[Montserrat]">
         <div className="max-w-6xl mx-auto">
           {isProfileOpen && <ProfileModal user={user} onClose={() => setIsProfileOpen(false)} onSave={(u) => { setUser(u); setIsProfileOpen(false); }} />}
+          
           <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-            <div><h1 className="text-4xl md:text-5xl font-bold text-[#414942] tracking-tight">Wed.Control</h1><button onClick={() => setIsProfileOpen(true)} className="text-[#AC8A69] mt-2 hover:text-[#936142] flex items-center gap-2">Кабинет: {user?.name} <Edit3 size={14}/></button></div>
+            <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-[#414942] tracking-tight">Wed.Control</h1>
+                <button onClick={() => setIsProfileOpen(true)} className="text-[#AC8A69] mt-2 hover:text-[#936142] flex items-center gap-2">Кабинет: {user?.name} <Edit3 size={14}/></button>
+            </div>
             <div className="flex gap-2 w-full md:w-auto">
                 <Button onClick={() => { setFormData(INITIAL_FORM_STATE); setView('create'); }}><Plus size={20}/> Новый проект</Button>
                 <Button variant="secondary" onClick={() => setView('team')}><UsersIcon size={20}/> Команда</Button>
             </div>
           </header>
+
           <div className="flex gap-4 mb-8 border-b border-[#EBE5E0]">
              <button onClick={() => setDashboardTab('active')} className={`pb-3 px-1 text-sm font-bold uppercase tracking-wider transition-all border-b-2 ${dashboardTab === 'active' ? 'border-[#936142] text-[#936142]' : 'border-transparent text-[#CCBBA9]'}`}>Активные</button>
              <button onClick={() => setDashboardTab('archived')} className={`pb-3 px-1 text-sm font-bold uppercase tracking-wider transition-all border-b-2 ${dashboardTab === 'archived' ? 'border-[#936142] text-[#936142]' : 'border-transparent text-[#CCBBA9]'}`}>Архив</button>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {filteredProjects.map(p => (
               <div key={p.id} onClick={() => { setCurrentProject(p); setView('project'); setActiveTab('overview'); }} className="bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer group border border-[#EBE5E0] hover:border-[#AC8A69]/30 relative overflow-hidden">
@@ -358,7 +404,10 @@ export default function App() {
                     <p className="text-xs font-bold text-[#AC8A69] uppercase tracking-widest mb-3">{formatDate(p.date)}</p>
                     <h3 className="text-2xl font-serif text-[#414942] mb-1">{p.groomName} <span className="text-[#AC8A69]">&</span> {p.brideName}</h3>
                     <p className="text-[#CCBBA9] text-sm mb-6">{p.venueName || 'Локация не выбрана'}</p>
-                    <div className="flex items-center justify-between mt-8 border-t border-[#F9F7F5] pt-4"><div><p className="text-[10px] text-[#CCBBA9] uppercase">Организатор</p><p className="text-xs text-[#AC8A69] font-bold">{p.organizerName || 'Владелец'}</p></div><span className="text-[#936142] group-hover:translate-x-1 transition-transform"><ArrowRight size={20}/></span></div>
+                    <div className="flex items-center justify-between mt-8 border-t border-[#F9F7F5] pt-4">
+                        <div><p className="text-[10px] text-[#CCBBA9] uppercase">Организатор</p><p className="text-xs text-[#AC8A69] font-bold">{p.organizerName || 'Владелец'}</p></div>
+                        <span className="text-[#936142] group-hover:translate-x-1 transition-transform"><ArrowRight size={20}/></span>
+                    </div>
                 </div>
               </div>
             ))}
@@ -378,7 +427,13 @@ export default function App() {
                 <div className="space-y-6">
                     <div className="p-6 bg-[#F9F7F5] rounded-xl space-y-6">
                         <p className="text-[#936142] font-semibold text-sm uppercase tracking-wider mb-4 border-b border-[#CCBBA9]/20 pb-2">О паре</p>
-                        <div className="mb-4"><label className="block text-xs font-semibold text-[#AC8A69] uppercase tracking-wider mb-2 ml-1">Ответственный организатор</label><select className="w-full bg-white border-none rounded-xl p-4 text-[#414942] outline-none" value={formData.organizerId} onChange={e => setFormData({...formData, organizerId: e.target.value})}><option value="owner">Владелец (Я)</option>{team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-[#AC8A69] uppercase tracking-wider mb-2 ml-1">Ответственный организатор</label>
+                            <select className="w-full bg-white border-none rounded-xl p-4 text-[#414942] outline-none" value={formData.organizerId} onChange={e => setFormData({...formData, organizerId: e.target.value})}>
+                                <option value="owner">Владелец (Я)</option>
+                                {team.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                            </select>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><Input label="Жених" placeholder="Имя" value={formData.groomName} onChange={e => setFormData({...formData, groomName: e.target.value})} /><Input label="Невеста" placeholder="Имя" value={formData.brideName} onChange={e => setFormData({...formData, brideName: e.target.value})} /></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><Input label="Дата свадьбы" type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /><Input label="Гостей" type="number" placeholder="50" value={formData.guestsCount} onChange={e => setFormData({...formData, guestsCount: e.target.value})} /></div>
                     </div>
@@ -388,6 +443,7 @@ export default function App() {
                     <Button onClick={createProject} className="w-full mt-8">Создать проект</Button>
                 </div>
             </Card>
+            <div className="h-24"></div> {/* Extra space at bottom */}
           </div>
       </div>
     );
@@ -399,6 +455,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F9F7F5] font-[Montserrat]">
         {isSettingsOpen && <SettingsModal project={currentProject} onClose={() => setIsSettingsOpen(false)} onSave={saveSettings} onDelete={deleteProject} onArchive={toggleArchive} />}
+
         <nav className="sticky top-0 bg-white/90 backdrop-blur border-b border-[#EBE5E0] z-50 px-4 md:px-6 h-16 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2 md:gap-4"><button onClick={() => setView('dashboard')} className="p-2 hover:bg-[#F9F7F5] rounded-full transition-colors text-[#AC8A69]"><ChevronLeft /></button><span className="text-lg md:text-xl font-bold text-[#936142] tracking-tight whitespace-nowrap">Wed.Control</span></div>
           <div className="hidden md:flex gap-1 bg-[#F9F7F5] p-1 rounded-xl">
@@ -406,9 +463,12 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4"><div className="text-right hidden md:block"><p className="font-serif text-[#414942] font-medium text-sm md:text-base">{currentProject.groomName} & {currentProject.brideName}</p><p className="text-[10px] md:text-xs text-[#AC8A69]">{formatDate(currentProject.date)}</p></div><button onClick={() => setIsSettingsOpen(true)} className="p-2 text-[#AC8A69] hover:text-[#936142] hover:bg-[#F9F7F5] rounded-full transition-colors"><Settings size={20} /></button><button onClick={handleLogout} className="p-2 text-[#AC8A69] hover:text-[#936142]"><LogOut size={20} /></button></div>
         </nav>
+        
+        {/* Mobile Nav */}
         <div className="md:hidden overflow-x-auto whitespace-nowrap px-6 pb-2 pt-2 scrollbar-hide border-b border-[#EBE5E0] bg-white/50 backdrop-blur-sm print:hidden">
              {['overview', 'tasks', 'budget', 'guests', 'timing', 'notes'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all inline-block mr-2 ${activeTab === tab ? 'bg-white text-[#936142] shadow-sm ring-1 ring-[#936142]/10' : 'text-[#CCBBA9]'}`}>{tab === 'overview' ? 'Обзор' : tab === 'tasks' ? 'Задачи' : tab === 'budget' ? 'Смета' : tab === 'guests' ? 'Гости' : tab === 'timing' ? 'Тайминг' : 'Заметки'}</button>))}
         </div>
+
         <main className="max-w-7xl mx-auto p-4 md:p-12 pb-32 print:p-0">
           {activeTab === 'overview' && (
             <div className="space-y-6 md:space-y-8 pb-10">
@@ -428,10 +488,10 @@ export default function App() {
                 <div><h3 className="text-lg md:text-xl font-serif text-[#414942] mb-4 md:mb-6">Ближайшие дедлайны</h3><div className="grid gap-3 md:gap-4">{currentProject.tasks.filter(t => !t.done).sort((a,b) => new Date(a.deadline) - new Date(b.deadline)).slice(0, 3).map(task => (<div key={task.id} className="flex items-center justify-between p-4 md:p-5 bg-white rounded-2xl shadow-sm border border-[#EBE5E0]"><div className="flex items-center gap-4"><div className="w-1.5 md:w-2 h-10 md:h-12 bg-[#C58970] rounded-full"></div><div><p className="font-medium text-sm md:text-base text-[#414942]">{task.text}</p><p className="text-xs md:text-sm text-[#AC8A69]">{formatDate(task.deadline)}</p></div></div><Button variant="ghost" onClick={() => setActiveTab('tasks')} className="p-2"><ArrowRight size={18} md:size={20}/></Button></div>))}</div></div>
             </div>
           )}
-          {activeTab === 'tasks' && <TasksViewRenderer tasks={currentProject.tasks} updateProject={updateProjectData} formatDate={formatDate} />}
-          {activeTab === 'budget' && <BudgetViewRenderer expenses={currentProject.expenses} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
-          {activeTab === 'guests' && <GuestsViewRenderer guests={currentProject.guests} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
-          {activeTab === 'timing' && <TimingViewRenderer timing={currentProject.timing} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
+          {activeTab === 'tasks' && <TasksView tasks={currentProject.tasks} updateProject={updateProjectData} />}
+          {activeTab === 'budget' && <BudgetView expenses={currentProject.expenses} updateProject={updateProjectData} />}
+          {activeTab === 'guests' && <GuestsView guests={currentProject.guests} updateProject={updateProjectData} />}
+          {activeTab === 'timing' && <TimingView timing={currentProject.timing} updateProject={updateProjectData} />}
           {activeTab === 'notes' && <NotesView notes={currentProject.notes} updateProject={updateProjectData} />}
         </main>
       </div>
