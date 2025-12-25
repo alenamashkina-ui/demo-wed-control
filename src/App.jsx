@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, Clock, Users, DollarSign, CheckSquare, 
   Plus, Trash2, Download, ChevronLeft, Heart, 
-  MapPin, X, ArrowRight, CalendarDays, 
-  Settings, Archive, LogOut, Key, Edit3, Save, Copy, Link as LinkIcon, PieChart, Users as UsersIcon, Shield
+  MapPin, X, ArrowRight, CalendarDays, Menu, 
+  FileText, FileSpreadsheet, File, PieChart, Settings, 
+  Archive, LogOut, Lock, User, Crown, Key, Loader2, Users as UsersIcon, Link as LinkIcon, Edit3, Save, XCircle, Shield, Copy
 } from 'lucide-react';
 
 // --- КОНФИГУРАЦИЯ ---
@@ -18,19 +19,21 @@ const COLORS = {
 // --- ДАННЫЕ ПО УМОЛЧАНИЮ ---
 const INITIAL_EXPENSES = [
   { category: 'Декор', name: 'Декор и флористика', plan: 150000, fact: 150000, paid: 50000, note: '' },
-  { category: 'Площадка', name: 'Аренда лофта', plan: 80000, fact: 80000, paid: 80000, note: '' },
-  { category: 'Фото и Видео', name: 'Фотограф', plan: 60000, fact: 60000, paid: 10000, note: '' },
-  { category: 'Образ', name: 'Стилист', plan: 15000, fact: 15000, paid: 0, note: '' },
-  { category: 'Банкет', name: 'Торт', plan: 10000, fact: 0, paid: 0, note: '' },
-  { category: 'Банкет', name: 'Кейтеринг', plan: 200000, fact: 0, paid: 0, note: '' },
-  { category: 'Команда', name: 'Организация', plan: 50000, fact: 50000, paid: 25000, note: '' },
+  { category: 'Площадка', name: 'Аренда мебели', plan: 30000, fact: 0, paid: 0, note: '' },
+  { category: 'Полиграфия', name: 'Приглашения', plan: 15000, fact: 15000, paid: 15000, note: '' },
+  { category: 'Фото и Видео', name: 'Фотограф', plan: 80000, fact: 80000, paid: 20000, note: '' },
+  { category: 'Фото и Видео', name: 'Видеограф', plan: 70000, fact: 0, paid: 0, note: '' },
+  { category: 'Программа', name: 'Ведущий + диджей', plan: 100000, fact: 100000, paid: 30000, note: '' },
+  { category: 'Образ', name: 'Стилист', plan: 25000, fact: 25000, paid: 5000, note: '' },
+  { category: 'Банкет', name: 'Торт', plan: 20000, fact: 0, paid: 0, note: '' },
+  { category: 'Банкет', name: 'Свадебный ужин', plan: 350000, fact: 0, paid: 0, note: '' },
+  { category: 'Команда', name: 'Организация', plan: 60000, fact: 60000, paid: 30000, note: '' },
 ];
 
 const INITIAL_TIMING = [
   { time: '09:00', event: 'Пробуждение' },
-  { time: '10:00', event: 'Приезд стилиста' },
-  { time: '12:00', event: 'Фотосессия в студии' },
-  { time: '15:30', event: 'Сбор гостей' },
+  { time: '10:00', event: 'Сборы невесты' },
+  { time: '13:00', event: 'Фотосессия' },
   { time: '16:00', event: 'Церемония' },
   { time: '17:00', event: 'Банкет' },
   { time: '23:00', event: 'Финал' },
@@ -64,6 +67,7 @@ const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('
 const toInputDate = (dateStr) => dateStr ? new Date(dateStr).toISOString().split('T')[0] : '';
 const getDaysUntil = (dateStr) => Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
 const formatCurrency = (val) => new Intl.NumberFormat('ru-RU', { style: 'decimal', maximumFractionDigits: 0 }).format(val || 0);
+
 const downloadCSV = (data, filename) => {
   const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + data.map(e => e.join(";")).join("\n");
   const link = document.createElement("a");
@@ -133,7 +137,7 @@ const DownloadMenu = ({ onSelect }) => {
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)}/>
           <div className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-[#EBE5E0] z-20 w-48 overflow-hidden">
             {['excel', 'csv', 'pdf'].map(type => (
-              <button key={type} onClick={() => { onSelect(type); setIsOpen(false); }} className="w-full text-left px-4 py-3 hover:bg-[#F9F7F5] text-[#414942] text-sm font-medium uppercase">{type}</button>
+              <button key={type} onClick={() => { onSelect(type); setOpen(false); }} className="w-full text-left px-4 py-3 hover:bg-[#F9F7F5] text-[#414942] text-sm font-medium uppercase">{type}</button>
             ))}
           </div>
         </>
@@ -142,15 +146,21 @@ const DownloadMenu = ({ onSelect }) => {
   );
 };
 
-// --- SUB-VIEWS (ВЫНЕСЕНЫ НАРУЖУ ДЛЯ ИСПРАВЛЕНИЯ ПУСТОГО ЭКРАНА) ---
+// --- SUB-VIEWS (ВОССТАНОВЛЕН ПОЛНЫЙ ФУНКЦИОНАЛ) ---
 
-const TasksView = ({ tasks, updateProject }) => (
+const TasksView = ({ tasks, updateProject, formatDate, downloadCSV }) => {
+    const handleExport = (type) => {
+        if (type === 'pdf') window.print();
+        else downloadCSV([['Задача','Статус'], ...tasks.map(x=>[x.text, x.done?'+':'-'])], 'tasks.csv');
+    };
+
+    return (
     <div className="space-y-6 animate-fadeIn pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 print:hidden">
         <h2 className="text-2xl font-serif text-[#414942]">Список задач</h2>
         <div className="flex gap-2 w-full md:w-auto">
            <Button variant="primary" onClick={() => updateProject('tasks', [...tasks, { id: Date.now(), text: 'Новая задача', deadline: new Date().toISOString(), done: false }])} className="flex-1 md:flex-none"><Plus size={18}/> Добавить</Button>
-           <DownloadMenu onSelect={(t) => downloadCSV([['Задача','Статус'], ...tasks.map(x=>[x.text, x.done?'+':'-'])], 'tasks.csv')} />
+           <DownloadMenu onSelect={handleExport} />
         </div>
       </div>
       <div className="grid gap-4">
@@ -172,10 +182,17 @@ const TasksView = ({ tasks, updateProject }) => (
         ))}
       </div>
     </div>
-);
+    );
+};
 
-const BudgetView = ({ expenses, updateProject }) => {
+const BudgetView = ({ expenses, updateProject, downloadCSV }) => {
       const totals = expenses.reduce((acc, item) => ({ plan: acc.plan + Number(item.plan), fact: acc.fact + Number(item.fact), paid: acc.paid + Number(item.paid) }), { plan: 0, fact: 0, paid: 0 });
+      
+      const handleExport = (type) => {
+        if (type === 'pdf') window.print();
+        else downloadCSV([["Наименование", "План", "Факт", "Внесено", "Остаток", "Комментарий"], ...expenses.map(e => [e.name, e.plan, e.fact, e.paid, e.fact - e.paid, e.note || '']), ["ИТОГО", totals.plan, totals.fact, totals.paid, totals.fact - totals.paid, ""]], "budget.csv");
+      };
+
       return (
         <div className="animate-fadeIn pb-24">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -208,47 +225,116 @@ const BudgetView = ({ expenses, updateProject }) => {
                   </table>
               </div>
           </div>
-          <div className="flex items-center gap-2 mt-6"><Button onClick={() => updateProject('expenses', [...expenses, { name: '', plan: 0, fact: 0, paid: 0 }])} variant="primary"><Plus size={18}/> Добавить статью</Button></div>
+          <div className="flex items-center gap-2 mt-6">
+              <Button onClick={() => updateProject('expenses', [...expenses, { name: '', plan: 0, fact: 0, paid: 0 }])} variant="primary"><Plus size={18}/> Добавить статью</Button>
+              <DownloadMenu onSelect={handleExport} />
+          </div>
         </div>
       );
 };
 
-const GuestsView = ({ guests, updateProject }) => (
+const GuestsView = ({ guests, updateProject, downloadCSV }) => {
+    // Восстановлены все поля: Рассадка, Трансфер, Еда/Напитки
+    const addGuest = () => updateProject('guests', [...guests, { id: Date.now(), name: '', seatingName: '', table: '', food: '', drinks: '', transfer: false, comment: '' }]);
+    const updateGuest = (id, field, val) => updateProject('guests', guests.map(g => g.id === id ? { ...g, [field]: val } : g));
+    const removeGuest = (id) => updateProject('guests', guests.filter(g => g.id !== id));
+    
+    const handleExport = (type) => {
+        if (type === 'pdf') window.print();
+        else downloadCSV([["ФИО", "Рассадка", "Стол", "Еда", "Напитки", "Трансфер", "Комментарий"], ...guests.map(g => [g.name, g.seatingName, g.table, g.food, g.drinks, g.transfer ? "Да" : "Нет", g.comment])], "guests.csv");
+    };
+
+    return (
       <div className="animate-fadeIn pb-24">
-          <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-serif text-[#414942]">Список гостей ({guests.length})</h2><Button onClick={() => updateProject('guests', [...guests, { id: Date.now(), name: '', table: '' }])} variant="primary"><Plus size={18}/> Добавить</Button></div>
-          <div className="grid gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 print:hidden">
+              <div className="flex items-baseline gap-4"><h2 className="text-2xl font-serif text-[#414942]">Список гостей</h2><span className="text-[#AC8A69] font-medium">{guests.length} персон</span></div>
+              <div className="flex gap-2 w-full md:w-auto">
+                  <Button onClick={addGuest} variant="primary" className="flex-1 md:flex-none"><Plus size={18}/> Добавить</Button>
+                  <DownloadMenu onSelect={handleExport} />
+              </div>
+          </div>
+          <div className="hidden print:block mb-8"><h1 className="text-3xl font-serif text-[#414942]">Список гостей</h1><p className="text-[#AC8A69] mb-4">Всего персон: {guests.length}</p></div>
+          
+          {/* Print Table View */}
+          <div className="hidden print:block w-full">
+             <table className="w-full text-left border-collapse text-sm">
+                <thead><tr className="border-b border-[#414942] text-[#936142]"><th className="py-2">ФИО</th><th className="py-2">Рассадка</th><th className="py-2">Стол</th><th className="py-2">Еда/Напитки</th><th className="py-2">Трансфер</th><th className="py-2">Комментарий</th></tr></thead>
+                <tbody className="divide-y divide-[#CCBBA9]">{guests.map(g => (<tr key={g.id} className="break-inside-avoid"><td className="py-2">{g.name}</td><td className="py-2">{g.seatingName}</td><td className="py-2">{g.table}</td><td className="py-2">{g.food} / {g.drinks}</td><td className="py-2">{g.transfer ? 'Да' : ''}</td><td className="py-2">{g.comment}</td></tr>))}</tbody>
+             </table>
+          </div>
+
+          <div className="grid gap-4 print:hidden">
               {guests.map((guest, idx) => (
                   <Card key={guest.id} className="p-6">
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                          <div className="flex items-center justify-between w-full md:w-auto md:col-span-1"><span className="w-8 h-8 rounded-full bg-[#CCBBA9]/30 text-[#936142] flex items-center justify-center font-bold text-sm">{idx + 1}</span><button onClick={() => updateProject('guests', guests.filter(g=>g.id!==guest.id))} className="md:hidden text-red-400"><Trash2 size={18}/></button></div>
-                          <div className="w-full md:col-span-3"><label className="text-[10px] text-[#CCBBA9] font-bold">ФИО</label><input className="w-full text-lg font-medium text-[#414942] bg-transparent border-b border-transparent focus:border-[#AC8A69] outline-none" placeholder="Имя гостя" value={guest.name} onChange={(e) => { const n=[...guests]; n[idx].name=e.target.value; updateProject('guests', n); }} /></div>
-                          <div className="w-1/2 md:w-full md:col-span-2"><label className="text-[10px] text-[#CCBBA9] font-bold">Стол №</label><input className="w-full bg-transparent border-b border-[#EBE5E0] focus:border-[#AC8A69] outline-none" value={guest.table} onChange={(e) => { const n=[...guests]; n[idx].table=e.target.value; updateProject('guests', n); }} /></div>
-                          <div className="w-full md:col-span-3"><label className="text-[10px] text-[#CCBBA9] font-bold">Пожелания</label><input className="w-full text-sm bg-transparent border-b border-[#EBE5E0] outline-none" placeholder="Еда..." value={guest.food} onChange={(e) => { const n=[...guests]; n[idx].food=e.target.value; updateProject('guests', n); }} /></div>
-                          <div className="hidden md:flex md:col-span-1 justify-end pt-4"><button onClick={() => updateProject('guests', guests.filter(g=>g.id!==guest.id))} className="text-[#CCBBA9] hover:text-red-400"><Trash2 size={18}/></button></div>
+                          <div className="flex items-center justify-between w-full md:w-auto md:col-span-1"><span className="w-8 h-8 rounded-full bg-[#CCBBA9]/30 text-[#936142] flex items-center justify-center font-bold text-sm">{idx + 1}</span><button onClick={() => removeGuest(guest.id)} className="md:hidden text-red-400"><Trash2 size={18}/></button></div>
+                          
+                          <div className="w-full md:col-span-3">
+                              <label className="text-[10px] text-[#CCBBA9] font-bold uppercase">ФИО</label>
+                              <input className="w-full text-lg font-medium text-[#414942] bg-transparent border-b border-transparent focus:border-[#AC8A69] outline-none" placeholder="Имя гостя" value={guest.name} onChange={(e) => updateGuest(guest.id, 'name', e.target.value)} />
+                              <input className="w-full text-sm text-[#AC8A69] bg-transparent outline-none mt-1 border-b border-[#EBE5E0]" placeholder="Имя на карточке рассадки" value={guest.seatingName} onChange={(e) => updateGuest(guest.id, 'seatingName', e.target.value)} />
+                          </div>
+                          
+                          <div className="w-1/2 md:w-full md:col-span-2">
+                              <label className="text-[10px] text-[#CCBBA9] font-bold uppercase">Стол №</label>
+                              <input className="w-full bg-transparent border-b border-[#EBE5E0] focus:border-[#AC8A69] outline-none py-1" value={guest.table} onChange={(e) => updateGuest(guest.id, 'table', e.target.value)} />
+                          </div>
+                          
+                          <div className="w-full md:col-span-3">
+                              <label className="text-[10px] text-[#CCBBA9] font-bold uppercase">Пожелания</label>
+                              <input className="w-full text-sm bg-transparent border-b border-[#EBE5E0] outline-none py-1 mb-1" placeholder="Еда (аллергии...)" value={guest.food} onChange={(e) => updateGuest(guest.id, 'food', e.target.value)} />
+                              <input className="w-full text-sm bg-transparent border-b border-[#EBE5E0] outline-none py-1" placeholder="Напитки..." value={guest.drinks} onChange={(e) => updateGuest(guest.id, 'drinks', e.target.value)} />
+                          </div>
+                          
+                          <div className="w-full md:col-span-2 flex items-center gap-2 pt-4">
+                              <label className="flex items-center cursor-pointer select-none">
+                                  <div className={`w-5 h-5 rounded border flex items-center justify-center mr-2 transition-colors ${guest.transfer ? 'bg-[#936142] border-[#936142]' : 'border-[#CCBBA9]'}`}>{guest.transfer && <CheckSquare size={12} color="white"/>}</div>
+                                  <input type="checkbox" className="hidden" checked={guest.transfer} onChange={(e) => updateGuest(guest.id, 'transfer', e.target.checked)} />
+                                  <span className="text-sm text-[#414942]">Нужен трансфер</span>
+                              </label>
+                          </div>
+                          
+                          <div className="hidden md:flex md:col-span-1 justify-end pt-4"><button onClick={() => removeGuest(guest.id)} className="text-[#CCBBA9] hover:text-red-400"><Trash2 size={18}/></button></div>
                       </div>
+                      <div className="mt-2 pt-2 border-t border-[#F9F7F5]"><input className="w-full text-sm text-[#414942] italic bg-transparent outline-none" placeholder="Комментарий / Заметка..." value={guest.comment} onChange={(e) => updateGuest(guest.id, 'comment', e.target.value)} /></div>
                   </Card>
               ))}
           </div>
       </div>
-);
+    );
+};
 
-const TimingView = ({ timing, updateProject }) => (
+const TimingView = ({ timing, updateProject, downloadCSV }) => {
+    const sortTiming = (list) => [...list].sort((a, b) => a.time.localeCompare(b.time));
+    const updateTimingItem = (id, field, value) => { const newTiming = timing.map(t => t.id === id ? { ...t, [field]: value } : t); updateProject('timing', newTiming); };
+    const handleBlurSort = () => updateProject('timing', sortTiming(timing));
+    const removeTimingItem = (id) => updateProject('timing', timing.filter(t => t.id !== id));
+    const addTimingItem = () => { const newItem = { id: Math.random().toString(36).substr(2, 9), time: '00:00', event: 'Новый этап' }; updateProject('timing', sortTiming([...timing, newItem])); };
+    const handleExport = (type) => {
+        if (type === 'pdf') window.print();
+        else downloadCSV([["Время", "Событие"], ...timing.map(t => [t.time, t.event])], "timing.csv");
+    };
+
+    return (
     <div className="animate-fadeIn max-w-2xl mx-auto pb-24">
-        <div className="relative border-l border-[#EBE5E0] ml-4 md:ml-6 space-y-6">
+        <div className="flex justify-end mb-4 print:hidden"><DownloadMenu onSelect={handleExport} /></div>
+        <div className="hidden print:block mb-8"><h1 className="text-3xl font-serif text-[#414942] mb-2">Тайминг дня</h1></div>
+        <div className="relative border-l border-[#EBE5E0] ml-4 md:ml-6 space-y-6 print:border-none print:ml-0 print:space-y-2">
             {timing.sort((a,b)=>a.time.localeCompare(b.time)).map((item, idx) => (
-                <div key={item.id} className="relative pl-6 group">
-                    <div className="absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#AC8A69]"></div>
+                <div key={item.id} className="relative pl-6 group print:pl-0 print:border-b print:pb-2 print:border-[#EBE5E0]">
+                    <div className="absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#AC8A69] transition-all group-hover:scale-125 group-hover:border-[#936142] print:hidden"></div>
                     <div className="flex items-baseline gap-4">
-                          <input className="w-16 text-lg font-bold text-[#936142] bg-transparent outline-none text-right" value={item.time} onChange={(e) => { const n=[...timing]; n[idx].time=e.target.value; updateProject('timing', n); }} />
-                          <input className="flex-1 text-base text-[#414942] bg-transparent outline-none border-b border-transparent focus:border-[#AC8A69]" value={item.event} onChange={(e) => { const n=[...timing]; n[idx].event=e.target.value; updateProject('timing', n); }} />
-                          <button onClick={() => updateProject('timing', timing.filter(t=>t.id!==item.id))} className="opacity-0 group-hover:opacity-100 text-[#CCBBA9] hover:text-red-400"><X size={14}/></button>
+                          <input className="w-16 text-lg font-bold text-[#936142] bg-transparent outline-none text-right" value={item.time} onChange={(e) => updateTimingItem(item.id, 'time', e.target.value)} onBlur={handleBlurSort} />
+                          <input className="flex-1 text-base text-[#414942] bg-transparent outline-none border-b border-transparent focus:border-[#AC8A69]" value={item.event} onChange={(e) => updateTimingItem(item.id, 'event', e.target.value)} />
+                          <button onClick={() => removeTimingItem(item.id)} className="opacity-0 group-hover:opacity-100 text-[#CCBBA9] hover:text-red-400"><X size={14}/></button>
                     </div>
                 </div>
             ))}
-            <div className="pl-6 pt-2"><button onClick={() => updateProject('timing', [...timing, { id: Date.now(), time: '00:00', event: '' }])} className="flex items-center gap-2 text-[#AC8A69] text-xs font-medium"><Plus size={10}/> Добавить этап</button></div>
+            <div className="pl-6 pt-2 print:hidden"><button onClick={addTimingItem} className="flex items-center gap-2 text-[#AC8A69] hover:text-[#936142] text-xs font-medium"><Plus size={10}/> Добавить этап</button></div>
         </div>
     </div>
-);
+    );
+};
 
 const NotesView = ({ notes, updateProject }) => (
   <div className="h-full flex flex-col animate-fadeIn pb-24 md:pb-0">
@@ -272,8 +358,6 @@ export default function App() {
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
   // --- МАГИЯ ДЛЯ ДЕМО-ССЫЛКИ ---
-  // Если человек заходит по ссылке ?id=123, а проекта нет в памяти — создаем "Фейковый" проект,
-  // чтобы человек увидел красивый интерфейс
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
@@ -289,7 +373,6 @@ export default function App() {
                 expenses: INITIAL_EXPENSES, timing: INITIAL_TIMING.map(t => ({...t, id: Math.random()})),
                 guests: [], notes: ''
             };
-            // Сохраняем во временную память гостя
             setProjects(prev => [...prev, proj]);
         }
         setCurrentProject(proj);
@@ -365,8 +448,6 @@ export default function App() {
     setIsSettingsOpen(false);
     setView('dashboard');
   };
-
-  // --- VIEWS ---
 
   if (view === 'team') {
       return <OrganizersView team={team} onBack={() => setView('dashboard')} onAdd={(m) => setTeam([...team, m])} onDelete={(id) => setTeam(team.filter(t => t.id !== id))} />;
@@ -488,10 +569,10 @@ export default function App() {
                 <div><h3 className="text-lg md:text-xl font-serif text-[#414942] mb-4 md:mb-6">Ближайшие дедлайны</h3><div className="grid gap-3 md:gap-4">{currentProject.tasks.filter(t => !t.done).sort((a,b) => new Date(a.deadline) - new Date(b.deadline)).slice(0, 3).map(task => (<div key={task.id} className="flex items-center justify-between p-4 md:p-5 bg-white rounded-2xl shadow-sm border border-[#EBE5E0]"><div className="flex items-center gap-4"><div className="w-1.5 md:w-2 h-10 md:h-12 bg-[#C58970] rounded-full"></div><div><p className="font-medium text-sm md:text-base text-[#414942]">{task.text}</p><p className="text-xs md:text-sm text-[#AC8A69]">{formatDate(task.deadline)}</p></div></div><Button variant="ghost" onClick={() => setActiveTab('tasks')} className="p-2"><ArrowRight size={18} md:size={20}/></Button></div>))}</div></div>
             </div>
           )}
-          {activeTab === 'tasks' && <TasksView tasks={currentProject.tasks} updateProject={updateProjectData} />}
-          {activeTab === 'budget' && <BudgetView expenses={currentProject.expenses} updateProject={updateProjectData} />}
-          {activeTab === 'guests' && <GuestsView guests={currentProject.guests} updateProject={updateProjectData} />}
-          {activeTab === 'timing' && <TimingView timing={currentProject.timing} updateProject={updateProjectData} />}
+          {activeTab === 'tasks' && <TasksView tasks={currentProject.tasks} updateProject={updateProjectData} formatDate={formatDate} downloadCSV={downloadCSV} />}
+          {activeTab === 'budget' && <BudgetView expenses={currentProject.expenses} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
+          {activeTab === 'guests' && <GuestsView guests={currentProject.guests} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
+          {activeTab === 'timing' && <TimingView timing={currentProject.timing} updateProject={updateProjectData} downloadCSV={downloadCSV} />}
           {activeTab === 'notes' && <NotesView notes={currentProject.notes} updateProject={updateProjectData} />}
         </main>
       </div>
